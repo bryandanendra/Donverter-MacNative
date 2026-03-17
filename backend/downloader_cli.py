@@ -11,6 +11,16 @@ import traceback
 DOWNLOAD_FOLDER = os.path.expanduser('~/Downloads')
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
+def get_ffmpeg_path():
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, 'ffmpeg')
+    return os.path.join(os.path.dirname(__file__), 'bin', 'ffmpeg')
+
+def get_ffprobe_path():
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, 'ffprobe')
+    return os.path.join(os.path.dirname(__file__), 'bin', 'ffprobe')
+
 def send_to_swift(message_type, data):
     """Mencetak JSON ke stdout agar bisa dibaca oleh aplikasi Swift secara live"""
     message = {"type": message_type}
@@ -26,7 +36,7 @@ def force_reencode_to_h264(filepath):
     send_to_swift("status", {"message": f"Checking QuickTime compatibility..."})
     try:
         probe_result = subprocess.run(
-            ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+            [get_ffprobe_path(), '-v', 'error', '-select_streams', 'v:0',
              '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', filepath],
             capture_output=True, text=True, timeout=10
         )
@@ -42,7 +52,7 @@ def force_reencode_to_h264(filepath):
     temp_output = filepath.replace('.mp4', '_h264_temp.mp4')
     try:
         result = subprocess.run([
-            'ffmpeg', '-i', filepath,
+            get_ffmpeg_path(), '-i', filepath,
             '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
             '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
             '-pix_fmt', 'yuv420p', '-y', temp_output
@@ -89,6 +99,7 @@ def download_video(url, platform, format_type='mp4', resolution='best'):
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
+        'ffmpeg_location': get_ffmpeg_path(),
     }
     
     if format_type == 'mp3':
