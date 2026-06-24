@@ -53,7 +53,7 @@ def force_reencode_to_h264(filepath):
     try:
         result = subprocess.run([
             get_ffmpeg_path(), '-i', filepath,
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+            '-c:v', 'h264_videotoolbox', '-q:v', '50',
             '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
             '-pix_fmt', 'yuv420p', '-y', temp_output
         ], capture_output=True, text=True, timeout=300)
