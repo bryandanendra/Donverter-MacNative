@@ -33,7 +33,7 @@ def force_reencode_to_h264(filepath):
     if not os.path.exists(filepath) or not filepath.lower().endswith('.mp4'):
         return filepath
     
-    send_to_swift("status", {"message": f"Checking QuickTime compatibility..."})
+    send_to_swift("status", {"message": "Verifying compatibility..."})
     try:
         probe_result = subprocess.run(
             [get_ffprobe_path(), '-v', 'error', '-select_streams', 'v:0',
@@ -42,10 +42,10 @@ def force_reencode_to_h264(filepath):
         )
         current_codec = probe_result.stdout.strip()
         if current_codec == 'h264':
-            send_to_swift("status", {"message": "✅ Video already compatible."})
+            send_to_swift("status", {"message": "Format verified."})
             return filepath
         else:
-            send_to_swift("status", {"message": f"⚠️ Optimizing format ({current_codec} to H.264)..."})
+            send_to_swift("status", {"message": f"Optimizing format ({current_codec.upper()} to H.264)..."})
     except Exception as e:
         send_to_swift("status", {"message": "Re-encoding to ensure compatibility..."})
     
@@ -61,11 +61,11 @@ def force_reencode_to_h264(filepath):
         if result.returncode == 0 and os.path.exists(temp_output):
             os.remove(filepath)
             os.rename(temp_output, filepath)
-            send_to_swift("status", {"message": "✅ Optimization complete."})
+            send_to_swift("status", {"message": "Optimization complete."})
         else:
             if os.path.exists(temp_output):
                 os.remove(temp_output)
-            send_to_swift("status", {"message": "⚠️ Optimization failed, using original."})
+            send_to_swift("status", {"message": "Optimization bypassed."})
     except Exception as e:
         if os.path.exists(temp_output):
             os.remove(temp_output)
