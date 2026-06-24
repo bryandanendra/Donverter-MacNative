@@ -705,8 +705,7 @@ class DownloadManager: ObservableObject {
                 self.progress = percentDouble / 100.0
             }
             let speed = update.speed ?? "-"
-            let eta = update.eta ?? "-"
-            self.statusMessage = "Downloading... (\(speed) • ETA: \(eta))"
+            self.statusMessage = "Downloading... (\(speed))"
         case "status":
             self.statusMessage = update.message ?? "Processing..."
         case "success":
