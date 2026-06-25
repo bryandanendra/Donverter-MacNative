@@ -193,60 +193,40 @@ def convert_image(input_path, output_path, target_format, quality=100):
     except Exception as e:
         return False, str(e)
 
-def process_pdf_to_images(pdf_path, target_format, quality=100):
-    """Convert each page of a PDF file into individual images inside a folder."""
-    ext_map = {
-        'jpeg': '.jpg',
-        'jpg': '.jpg',
-        'png': '.png',
-        'webp': '.webp',
-    }
-
-    target_fm = target_format.lower()
-    if target_fm not in ext_map:
-        send_to_swift("error", {"message": f"Format {target_format} not supported for PDF extraction. Use PNG, JPG, or WEBP."})
-        return
-
-    if not os.path.exists(pdf_path):
-        send_to_swift("error", {"message": f"PDF file not found: {pdf_path}"})
-        return
-
+def _render_pdf_to_folder(pdf_path, output_folder, target_fm, ext_map, quality, progress_offset=0, progress_total=1):
+    """Render all pages of a single PDF into *output_folder*.
+    progress_offset / progress_total are used to calculate global progress
+    when processing multiple PDFs.
+    Returns number of successfully converted pages.
+    """
     pdf_name = Path(pdf_path).stem
-    output_folder = os.path.join(CONVERTED_FOLDER, f"{pdf_name}_Pages")
-
-    # If folder already exists, add timestamp to avoid collision
-    if os.path.exists(output_folder):
-        timestamp = int(time.time())
-        output_folder = os.path.join(CONVERTED_FOLDER, f"{pdf_name}_Pages_{timestamp}")
-
-    os.makedirs(output_folder, exist_ok=True)
 
     send_to_swift("status", {"message": f"Opening PDF: {os.path.basename(pdf_path)}..."})
 
     try:
         doc = fitz.open(pdf_path)
     except Exception as e:
-        send_to_swift("error", {"message": f"Failed to open PDF: {str(e)}"})
-        return
+        send_to_swift("status", {"message": f"Failed to open PDF {os.path.basename(pdf_path)}: {str(e)}"})
+        return 0
 
     total_pages = len(doc)
     if total_pages == 0:
-        send_to_swift("error", {"message": "PDF has no pages."})
+        send_to_swift("status", {"message": f"PDF {os.path.basename(pdf_path)} has no pages, skipping."})
         doc.close()
-        return
+        return 0
 
-    send_to_swift("status", {"message": f"Extracting {total_pages} pages to {target_format.upper()}..."})
+    send_to_swift("status", {"message": f"Extracting {total_pages} pages from {os.path.basename(pdf_path)}..."})
 
-    # Render at 300 DPI (high quality)
     dpi = 300
-    zoom = dpi / 72.0  # PDF default is 72 DPI
+    zoom = dpi / 72.0
     matrix = fitz.Matrix(zoom, zoom)
 
     converted_count = 0
     for page_num in range(total_pages):
+        global_progress = progress_offset + (page_num / total_pages) / progress_total
         send_to_swift("progress", {
-            "percent": int((page_num / total_pages) * 100),
-            "current_file": f"Page {page_num + 1} of {total_pages}"
+            "percent": int(global_progress * 100),
+            "current_file": f"{os.path.basename(pdf_path)} — Page {page_num + 1}/{total_pages}"
         })
 
         try:
@@ -257,11 +237,10 @@ def process_pdf_to_images(pdf_path, target_format, quality=100):
             page_path = os.path.join(output_folder, page_filename)
 
             if target_fm in ['jpg', 'jpeg']:
-                # fitz can save as JPEG directly via PIL
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                 img.save(page_path, format='JPEG', quality=quality, optimize=True)
             elif target_fm == 'png':
-                pix.save(page_path)  # fitz native PNG save (fastest)
+                pix.save(page_path)
             elif target_fm == 'webp':
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                 webp_kwargs = {'quality': quality, 'method': 4}
@@ -274,15 +253,80 @@ def process_pdf_to_images(pdf_path, target_format, quality=100):
             send_to_swift("status", {"message": f"Failed page {page_num + 1}: {str(e)}"})
 
     doc.close()
+    return converted_count
 
-    if converted_count == 0:
-        send_to_swift("error", {"message": "Failed to extract any pages from PDF."})
+
+def process_pdf_to_images(pdf_files, target_format, quality=100):
+    """Convert pages of one or more PDF files into images.
+    *pdf_files* can be a single path string or a list of paths.
+    """
+    if isinstance(pdf_files, str):
+        pdf_files = [pdf_files]
+
+    ext_map = {
+        'jpeg': '.jpg',
+        'jpg': '.jpg',
+        'png': '.png',
+        'webp': '.webp',
+    }
+
+    target_fm = target_format.lower()
+    if target_fm not in ext_map:
+        send_to_swift("error", {"message": f"Format {target_format} not supported for PDF extraction. Use PNG, JPG, or WEBP."})
         return
 
-    send_to_swift("success", {
-        "filepath": output_folder,
-        "message": f"{converted_count} pages extracted to folder!"
-    })
+    # Filter out files that don't exist
+    valid_files = [f for f in pdf_files if os.path.exists(f)]
+    if not valid_files:
+        send_to_swift("error", {"message": "No valid PDF files found."})
+        return
+
+    timestamp = int(time.time())
+    total_files = len(valid_files)
+    total_converted = 0
+    output_folders = []
+
+    send_to_swift("status", {"message": f"Processing {total_files} PDF file(s)..."})
+
+    for file_idx, pdf_path in enumerate(valid_files):
+        pdf_name = Path(pdf_path).stem
+
+        if total_files == 1:
+            output_folder = os.path.join(CONVERTED_FOLDER, f"{pdf_name}_Pages")
+        else:
+            output_folder = os.path.join(CONVERTED_FOLDER, f"{pdf_name}_Pages_{timestamp}")
+
+        # Avoid collision
+        if os.path.exists(output_folder):
+            output_folder = os.path.join(CONVERTED_FOLDER, f"{pdf_name}_Pages_{timestamp}_{file_idx}")
+
+        os.makedirs(output_folder, exist_ok=True)
+
+        progress_offset = file_idx / total_files
+        count = _render_pdf_to_folder(
+            pdf_path, output_folder, target_fm, ext_map, quality,
+            progress_offset=progress_offset,
+            progress_total=total_files
+        )
+        total_converted += count
+        if count > 0:
+            output_folders.append(output_folder)
+
+    if total_converted == 0:
+        send_to_swift("error", {"message": "Failed to extract any pages from PDF(s)."})
+        return
+
+    # Report success
+    if len(output_folders) == 1:
+        send_to_swift("success", {
+            "filepath": output_folders[0],
+            "message": f"{total_converted} pages extracted to folder!"
+        })
+    else:
+        send_to_swift("success", {
+            "filepath": CONVERTED_FOLDER,
+            "message": f"{total_converted} pages extracted from {len(output_folders)} PDFs!"
+        })
 
 
 def process_batch(files, target_format, quality):
@@ -385,10 +429,7 @@ if __name__ == "__main__":
 
     try:
         if args.mode == 'pdf2img':
-            if len(args.files) != 1:
-                send_to_swift("error", {"message": "PDF to Images mode only supports one PDF file at a time."})
-            else:
-                process_pdf_to_images(args.files[0], args.format, args.quality)
+            process_pdf_to_images(args.files, args.format, args.quality)
         else:
             process_batch(args.files, args.format, args.quality)
     except Exception as e:

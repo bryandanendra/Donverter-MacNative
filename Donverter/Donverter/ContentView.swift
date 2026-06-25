@@ -787,7 +787,8 @@ class ImageConverterManager: ObservableObject {
         let quality = "100"
         var args: [String]
         if isPdfMode {
-            args = ["--mode", "pdf2img", "--format", format.lowercased(), "--quality", quality, "--files", selectedFiles[0].path]
+            args = ["--mode", "pdf2img", "--format", format.lowercased(), "--quality", quality, "--files"]
+            args.append(contentsOf: selectedFiles.map { $0.path })
         } else {
             let q = enableCompression ? "50" : "100"
             args = ["--format", format.lowercased(), "--quality", q, "--files"]
