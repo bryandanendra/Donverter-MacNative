@@ -568,6 +568,8 @@ extension View {
 
 // MARK: - Download Manager
 class DownloadManager: ObservableObject {
+    static let shared = DownloadManager()
+    
     @Published var progress: Double = 0.0
     @Published var statusMessage: String = "Ready"
     @Published var isDownloading: Bool = false
@@ -595,6 +597,8 @@ class DownloadManager: ObservableObject {
             self.statusMessage = "Starting download..."
             self.isDownloading = true
             self.downloadedFilePath = nil
+            // Show notch overlay
+            NotchProgressController.shared.show(label: "Downloading...", progress: 0.0, filePath: nil)
         }
         
         guard let cliURL = Bundle.main.url(forResource: "downloader_cli", withExtension: nil) else {
@@ -702,7 +706,9 @@ class DownloadManager: ObservableObject {
         switch update.type {
         case "progress":
             if let percentStr = update.percent, let percentDouble = Double(percentStr) {
-                self.progress = percentDouble / 100.0
+                let pct = percentDouble / 100.0
+                self.progress = pct
+                NotchProgressController.shared.show(label: "Downloading...", progress: pct, filePath: nil)
             }
             let speed = update.speed ?? "-"
             self.statusMessage = "Downloading... (\(speed))"
@@ -713,9 +719,11 @@ class DownloadManager: ObservableObject {
             self.statusMessage = update.message ?? "Download Complete!"
             self.downloadedFilePath = update.filepath
             self.isDownloading = false
+            NotchProgressController.shared.markDone(label: "Download Complete", filePath: update.filepath)
         case "error":
             self.statusMessage = "Error: \(update.message ?? "Unknown error")"
             self.isDownloading = false
+            NotchProgressController.shared.dismiss()
         default: break
         }
     }
@@ -771,6 +779,9 @@ class ImageConverterManager: ObservableObject {
             self.statusMessage = self.isPdfMode ? "Extracting PDF pages..." : "Starting conversion..."
             self.isConverting = true
             self.convertedFilePath = nil
+            // Show notch overlay
+            let startLabel = self.isPdfMode ? "Extracting PDF..." : "Converting..."
+            NotchProgressController.shared.show(label: startLabel, progress: 0.0, filePath: nil)
         }
         
         guard let cliURL = Bundle.main.url(forResource: "image_converter_cli", withExtension: nil) else {
@@ -856,7 +867,12 @@ class ImageConverterManager: ObservableObject {
     private func handleUpdate(_ update: ProgressUpdate) {
         switch update.type {
         case "progress":
-            if let pct = update.percent { self.progress = Double(pct) / 100.0 }
+            if let pct = update.percent {
+                let fraction = Double(pct) / 100.0
+                self.progress = fraction
+                let fileLabel = update.current_file.map { "Converting \($0)" } ?? "Converting..."
+                NotchProgressController.shared.show(label: fileLabel, progress: fraction, filePath: nil)
+            }
             if let file = update.current_file { self.statusMessage = "Converting: \(file)..." }
         case "status":
             self.statusMessage = update.message ?? "Processing..."
@@ -866,9 +882,11 @@ class ImageConverterManager: ObservableObject {
             self.convertedFilePath = update.filepath
             self.isConverting = false
             self.selectedFiles = []
+            NotchProgressController.shared.markDone(label: "Conversion Complete", filePath: update.filepath)
         case "error":
             self.statusMessage = "Error: \(update.message ?? "Unknown error")"
             self.isConverting = false
+            NotchProgressController.shared.dismiss()
         default: break
         }
     }
@@ -1309,7 +1327,7 @@ struct ClearCacheModalView: View {
 
 // MARK: - Video Downloader UI
 struct VideoDownloaderView: View {
-    @StateObject private var manager = DownloadManager()
+    @ObservedObject private var manager = DownloadManager.shared
     @ObservedObject private var logger = DebugLogger.shared
     
     @State private var url: String = ""
@@ -1988,6 +2006,8 @@ struct ImageConverterView: View {
         }
     }
 }
+
+
 
 #Preview {
     ContentView()

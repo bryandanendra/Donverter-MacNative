@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 import Combine
 
 class AppCacheManager {
@@ -122,11 +123,35 @@ class AppStateManager: ObservableObject {
 
 @main
 struct DonverterApp: App {
+
+    init() {
+        // Boot the Dynamic Island-style notch progress overlay
+        _ = NotchProgressWindowManager.shared
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
         .commands {
+            CommandGroup(replacing: .pasteboard) {
+                Button("Cut") {
+                    NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("x", modifiers: .command)
+                Button("Copy") {
+                    NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("c", modifiers: .command)
+                Button("Paste") {
+                    NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("v", modifiers: .command)
+                Button("Select All") {
+                    NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("a", modifiers: .command)
+            }
             CommandMenu("Maintenance") {
                 Button("Clear Cache") {
                     AppStateManager.shared.refreshCacheSize()
@@ -137,5 +162,11 @@ struct DonverterApp: App {
                 .keyboardShortcut("k", modifiers: [.command, .shift])
             }
         }
+        
+        #if os(macOS)
+        Settings {
+            SettingsWindowView()
+        }
+        #endif
     }
 }
