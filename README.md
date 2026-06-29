@@ -13,74 +13,74 @@
 
 ---
 
-**Donverter** adalah aplikasi utilitas lengkap **Native macOS** super premium yang dirancang dengan estetika modern bergaya kaca *(Glassmorphism / Apple Control Center Style)*. Dibangun menggunakan SwiftUI dengan mesin Backend **Python** mandiri (Pillow, FFmpeg, yt-dlp) yang dibundel secara lokal. 
+**Donverter** is a premium, complete, **Native macOS** utility application designed with a modern glassmorphic aesthetic *(Glassmorphism / Apple Control Center Style)*. It is built using SwiftUI with a self-contained local **Python** backend engine (Pillow, FFmpeg, yt-dlp) bundled directly inside the app.
 
-Aplikasi ini menghadirkan pengalaman pengguna yang sangat ringan, responsif, dan menyatu dengan notch fisik macOS Anda.
+This application delivers a highly lightweight, responsive, and seamless user experience that integrates physically with your macOS notch.
 
 ---
 
-## ✨ Fitur-Fitur Premium
+## ✨ Premium Features
 
 ### 🏝️ Dynamic Island-Style Notch Progress Overlay
-Terinspirasi dari Dynamic Island Apple, Donverter menyajikan bar progress melayang yang menyatu mulus secara fisik dengan notch MacBook Anda (atau bertindak sebagai pill melayang di monitor non-notch).
-* **Posisi Notch Presisi**: Mendeteksi letak safe area monitor untuk menempel tepat di bawah notch fisik Anda tanpa lag ataupun kedipan (anti-flicker).
-* **Compact Mode**: Ketika dalam mode resting, hanya menampilkan *Circular Progress Ring* (kiri) dan *Logo App* (kanan) yang sangat minimalis dan bersih.
-* **Hover to Expand**: Arahkan kursor mouse ke arah notch untuk memperlebar Dynamic Island menjadi kartu detail berisi persentase unduhan, kecepatan, nama file, dan tombol tindakan.
-* **Click to Reveal**: Klik tombol **Show** atau bagian Dynamic Island untuk langsung membuka file hasil unduhan di Finder.
+Inspired by Apple's Dynamic Island, Donverter features a floating progress bar that integrates seamlessly with your MacBook's notch (or acts as a floating pill on non-notch monitors).
+* **Precise Notch Positioning**: Automatically detects the screen's safe area to attach perfectly beneath your physical notch with no lag or flicker (anti-flicker).
+* **Compact Mode**: When resting, it displays a minimal and clean design containing only a *Circular Progress Ring* (left) and the *App Logo* (right).
+* **Hover to Expand**: Hover your mouse cursor over the notch to expand the Dynamic Island into a detailed card showing download percentage, speed, filename, and action buttons.
+* **Click to Reveal**: Click the **Show** button or click on the Dynamic Island itself to open the downloaded file directly in Finder.
 
-### ⚙️ Jendela Pengaturan Native macOS (`Cmd + ,`)
-Akses pengaturan lengkap aplikasi langsung dari bar atas sistem (**Donverter -> Settings...**) atau cukup tekan shortcut standar Mac **`Cmd + ,`**:
-* **Enable Toggle**: Nyalakan atau matikan total Dynamic Island. Saat dimatikan, area notch tetap dapat diklik penuh (*click-through*).
-* **Display Mode Selector**: Pilih antara **Hover to Expand** (mengembang hanya jika disorot mouse) atau **Always Expanded** (selalu tampil lebar penuh saat aktif).
-* **Live Width Extension (Slider + Text Input)**: Geser slider atau masukkan angka px secara manual (40px - 200px) untuk melebarkan/mengecilkan posisi Dynamic Island secara live agar pas dengan notch layar Anda.
-* **Custom Background Color Picker**: Ganti warna latar belakang Dynamic Island secara instan menggunakan Color Picker native macOS (mendukung transparansi dan hex kustom).
-* **Completion Dismiss Settings**: Pilih untuk menutup Dynamic Island secara otomatis setelah **3s / 5s / 10s / 30s** atau membiarkannya tetap terbuka (**Keep Until Clicked**) sampai Anda mengeklik tombol **Show**.
+### ⚙️ Native macOS Settings Window (`Cmd + ,`)
+Access comprehensive application settings directly from the system menu bar (**Donverter -> Settings...**) or simply by pressing the standard Mac shortcut **`Cmd + ,`**:
+* **Enable Toggle**: Enable or fully disable the Dynamic Island. When disabled, the notch area is completely click-through.
+* **Display Mode Selector**: Choose between **Hover to Expand** (expands only when hovered by the mouse) or **Always Expanded** (always shows the full width when active).
+* **Live Width Extension (Slider + Text Input)**: Adjust the slider or manually input the width in pixels (40px - 200px) to resize the Dynamic Island in real-time to fit your screen's notch perfectly.
+* **Custom Background Color Picker**: Instantly change the Dynamic Island's background color using the native macOS Color Picker (supports transparency and custom hex codes).
+* **Completion Dismiss Settings**: Choose to automatically close the Dynamic Island after **3s / 5s / 10s / 30s** or keep it open (**Keep Until Clicked**) until you click the **Show** button.
 
 ### 🔄 Background Download Resilience (Singleton Engine)
-* Tidak ada lagi download terhenti ketika Anda menutup jendela aplikasi! 
-* `DownloadManager` didesain menggunakan arsitektur **Singleton** yang terikat dengan siklus hidup aplikasi utama, bukan jendela tampilan. Jendela utama dapat ditutup bebas, proses download tetap berjalan di background, dan progress-nya akan otomatis tersambung kembali (resume) secara mulus begitu jendela dibuka ulang.
+* No more interrupted downloads when you close the application window!
+* The `DownloadManager` is designed using a **Singleton** architecture tied to the lifecycle of the main application, not the UI window. The main window can be closed freely; the download process will continue running in the background, and its progress will automatically and seamlessly reconnect (resume) once the window is reopened.
 
 ### 📥 Video & Audio Downloader
-Mendukung unduhan dengan kualitas tertinggi (hingga 4K) dan output Audio (MP3) untuk platform populer:
+Supports downloading with the highest quality (up to 4K) and Audio (MP3) output for popular platforms:
 * **YouTube**, **TikTok**, & **Instagram**.
-* **Smart Auto-Fill**: Cukup buka aplikasi, Donverter akan mendeteksi link media di clipboard Anda secara otomatis dan memasukkannya ke text field.
-* **Pintar Mendeteksi Format**: Mengonversi codec secara otomatis menjadi standar H.264 (QuickTime compatible) pada video dari Instagram/TikTok agar bisa langsung diputar di Mac tanpa kendala.
+* **Smart Auto-Fill**: Simply open the app, and Donverter will automatically detect media links in your clipboard and paste them into the text field.
+* **Smart Format Detection**: Automatically converts video codecs to standard H.264 (QuickTime compatible) for videos from Instagram/TikTok, ensuring they can be played on macOS without issues.
 
 ### 🖼️ Batch Image Converter
-Lakukan konversi banyak gambar sekaligus (*PNG, JPG, HEIC, WEBP*) ke format target secara instan:
-* **Kompresi Cerdas**: Mengurangi ukuran file hingga **50%** dengan tetap mempertahankan kualitas visual yang tinggi.
-* **Auto-Zip**: Mengompresi hasil konversi banyak file secara otomatis menjadi satu file `.zip` agar praktis dikelola.
+Convert multiple images (*PNG, JPG, HEIC, WEBP*) to your target format simultaneously:
+* **Smart Compression**: Reduces file size by up to **50%** while maintaining high visual quality.
+* **Auto-Zip**: Automatically compresses multiple converted files into a single `.zip` file for easier organization.
 
 ### 🧹 Smart Cleanup Engine
-Dapat diakses melalui Menu Bar atas (**Maintenance -> Clear Cache** atau shortcut **`Cmd + Shift + K`**) untuk menghitung ukuran cache sementara dan menghapusnya dalam satu klik guna menghemat kapasitas SSD Mac Anda.
+Accessible via the top Menu Bar (**Maintenance -> Clear Cache** or shortcut **`Cmd + Shift + K`**) to calculate temporary cache size and clear it in one click to save SSD space on your Mac.
 
 ---
 
-## 🛠️ Stack Teknologi
+## 🛠️ Tech Stack
 * **Frontend / UI**: SwiftUI (Native Apple Development) + Glassmorphism Theme.
 * **Backend / Engine**: Python (`yt-dlp`, `FFmpeg`, `Pillow`).
 * **Compiler**: PyInstaller (Freezing Python), `xcodebuild` & `hdiutil` (macOS DMG Image Bundler).
 
 ---
 
-## 💿 Distribusi & Instalasi
-Donverter mendukung penciptaan *Standalone Disk Image (.DMG)*. Anda tidak membutuhkan Python untuk menjalankan aplikasi ini di komputer lain!
-1. File yang dihasilkan akan berupa `DonverterInstaller.dmg`.
-2. Cukup buka DMG dan seret aplikasi (Drag and Drop) ke folder **Applications**.
-3. 100% Plug-and-Play tanpa instalasi panjang!
+## 💿 Distribution & Installation
+Donverter supports building a *Standalone Disk Image (.DMG)*. You do not need Python installed on your system to run this app on another computer!
+1. The built file will be outputted as `DonverterInstaller.dmg`.
+2. Simply open the DMG and drag-and-drop the application into the **Applications** folder.
+3. 100% Plug-and-Play with no complicated setup!
 
 ---
 
-## 💻 Mengkompilasi Ulang & Membuat DMG
-Proyek ini dilengkapi build script otomatis untuk memaketkan ulang aplikasi menjadi `.dmg` installer hanya dalam 1 klik.
+## 💻 Recompiling & Creating DMG
+The project features an automated build script to package the app into a `.dmg` installer in just one click.
 
-Setiap selesai mengubah desain di Xcode atau logika dari file Python (`backend/`), kemas ulang secara otomatis melalui terminal dengan cara mengeksekusi script ini:
+Whenever you update the design in Xcode or edit the logic in the Python files (`backend/`), repackage the app via terminal by running:
 ```bash
 ./build_installer.sh
 ```
 
-Alat otomatisasi tersebut akan mengeksekusi 4 proses secara diam-diam:
-1. Membekukan kode `python` menjadi *Binary Executable* (Biner Aplikasi)
-2. Memasukkan *Binary* tersebut ke dalam perut `Xcode` *(Bundle Resource)*
-3. Melakukan *Compile SwiftUI (Release Mode)*
-4. Membungkus menjadi `DonverterInstaller.dmg` ke folder `~/Downloads` Anda!
+This automation script handles 4 steps under the hood:
+1. Freezes the `python` code into a *Binary Executable*.
+2. Copies that *Binary* into the `Xcode` project as a *Bundle Resource*.
+3. Performs a *SwiftUI Compile (Release Mode)*.
+4. Packages everything into `DonverterInstaller.dmg` and saves it to your `~/Downloads` directory!
