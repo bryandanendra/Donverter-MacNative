@@ -13,19 +13,36 @@
 
 echo "🚀 Memulai proses Build Otomatis Donverter..."
 
-# 1. Tentukan Direktori Vitals
-PROJECT_DIR="/Users/a1234/Documents/CODING/Donverter-MacNative"
-PYTHON_VENV="/Users/a1234/Documents/CODING/Donverter/venv/bin"
+# 1. Tentukan Direktori Vitals secara dinamis
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 APP_PATH="$PROJECT_DIR/Donverter/build/Release/Donverter.app"
+
+# Cari Python Virtual Environment / PyInstaller
+if [ -d "$PROJECT_DIR/venv/bin" ]; then
+  PYTHON_VENV="$PROJECT_DIR/venv/bin"
+elif [ -d "/Users/a1234/Documents/CODING/Donverter/venv/bin" ]; then
+  PYTHON_VENV="/Users/a1234/Documents/CODING/Donverter/venv/bin"
+else
+  PYTHON_VENV=""
+fi
+
+if [ -n "$PYTHON_VENV" ] && [ -f "$PYTHON_VENV/pyinstaller" ]; then
+  PYINSTALLER_BIN="$PYTHON_VENV/pyinstaller"
+elif command -v pyinstaller &> /dev/null; then
+  PYINSTALLER_BIN="pyinstaller"
+else
+  echo "❌ Error: pyinstaller tidak ditemukan! Aktifkan virtualenv Python yang berisi pyinstaller terlebih dahulu."
+  exit 1
+fi
 
 cd "$PROJECT_DIR" || exit
 
 echo "🐍 1/5 Mengkompilasi ulang Backend Python ke Biner Mandiri..."
-"$PYTHON_VENV/pyinstaller" --onefile --clean "$PROJECT_DIR/backend/downloader_cli.py" \
+"$PYINSTALLER_BIN" --onefile --clean "$PROJECT_DIR/backend/downloader_cli.py" \
   --add-binary "$PROJECT_DIR/backend/bin/ffmpeg:." \
   --add-binary "$PROJECT_DIR/backend/bin/ffprobe:." \
   --distpath "$PROJECT_DIR/backend/dist" --workpath "$PROJECT_DIR/backend/build" --specpath "$PROJECT_DIR/backend"
-"$PYTHON_VENV/pyinstaller" --onefile --clean "$PROJECT_DIR/backend/image_converter_cli.py" --distpath "$PROJECT_DIR/backend/dist" --workpath "$PROJECT_DIR/backend/build" --specpath "$PROJECT_DIR/backend"
+"$PYINSTALLER_BIN" --onefile --clean "$PROJECT_DIR/backend/image_converter_cli.py" --distpath "$PROJECT_DIR/backend/dist" --workpath "$PROJECT_DIR/backend/build" --specpath "$PROJECT_DIR/backend"
 
 echo "📂 2/5 Memasukkan Biner baru ke Xcode Resources..."
 mkdir -p "$PROJECT_DIR/Donverter/Donverter/Resources"
