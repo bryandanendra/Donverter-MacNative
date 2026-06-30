@@ -57,6 +57,7 @@ struct SettingsWindowView: View {
     
     @AppStorage("dynamicIslandDismissBehavior") private var dismissBehavior: String = "timer"
     @AppStorage("dynamicIslandDismissSeconds") private var dismissSeconds: Double = 5.0
+    @AppStorage("debugLogEnabled") private var isDebugLogEnabled: Bool = true
     
     @State private var widthText: String = ""
 
@@ -65,6 +66,37 @@ struct SettingsWindowView: View {
             Section("General Settings") {
                 Toggle("Enable Dynamic Island", isOn: $isIslandEnabled)
                     .toggleStyle(SwitchToggleStyle())
+                
+                LabeledContent("Console Output") {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                            isDebugLogEnabled.toggle()
+                            if !isDebugLogEnabled {
+                                DebugLogger.shared.clear()
+                            }
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "terminal")
+                                .font(.system(size: 11))
+                            Text("Debug Log")
+                                .font(.system(size: 12, weight: .medium))
+                            Circle()
+                                .fill(isDebugLogEnabled ? Color.green : Color.gray)
+                                .frame(width: 7, height: 7)
+                        }
+                        .foregroundColor(isDebugLogEnabled ? .white : .white.opacity(0.45))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
             
             Section("Appearance & Behavior") {

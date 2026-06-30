@@ -27,6 +27,8 @@ class DebugLogger: ObservableObject {
     }
     
     func log(_ tag: String, _ message: String) {
+        let enabled = UserDefaults.standard.object(forKey: "debugLogEnabled") as? Bool ?? true
+        guard enabled else { return }
         let entry = LogEntry(timestamp: Date(), tag: tag, message: message)
         DispatchQueue.main.async {
             self.logs.append(entry)
