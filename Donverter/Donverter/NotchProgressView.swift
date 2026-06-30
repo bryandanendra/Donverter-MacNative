@@ -117,7 +117,6 @@ struct ActivityDot: View {
 
 struct NotchProgressView: View {
     @EnvironmentObject var controller: NotchProgressController
-    @Namespace private var islandNamespace
     @State private var isHovering = false
     @AppStorage("notchWidthExtension") private var widthExtension: Double = 90.0
 
@@ -166,9 +165,9 @@ struct NotchProgressView: View {
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                // Background shape - Solid black/custom color to match the physical notch exactly
+                // Background shape - Solid black to match the physical notch exactly
                 NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR)
-                    .fill(Color(hex: bgColorHex))
+                    .fill(Color.black)
                     .opacity(visible ? 1.0 : 0.0)
 
                 // Content router (Opacity-based routing for smooth matchedGeometryEffect rendering)
@@ -212,7 +211,7 @@ struct NotchProgressView: View {
         switch controller.state {
         case .active(let label, let progress, _):
             HStack(spacing: 8) {
-                // Circular progress ring (no matchedGeometryEffect to prevent layout distortion)
+                // Circular progress ring only
                 CircularProgressView(progress: progress, color: .white)
                 
                 Spacer()
@@ -223,19 +222,17 @@ struct NotchProgressView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 18, height: 18)
                     .clipShape(RoundedRectangle(cornerRadius: 4.5))
-                    .matchedGeometryEffect(id: "app-logo", in: islandNamespace)
             }
             .padding(.horizontal, 12)
             .frame(height: closedH)
 
         case .done(_, _):
             HStack(spacing: 8) {
-                // Checkmark green icon and label
+                // Checkmark green icon and label on the left
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Color(red: 0.28, green: 0.92, blue: 0.50))
-                        .matchedGeometryEffect(id: "checkmark-icon", in: islandNamespace)
                     Text("Done")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.85))
@@ -249,7 +246,6 @@ struct NotchProgressView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 18, height: 18)
                     .clipShape(RoundedRectangle(cornerRadius: 4.5))
-                    .matchedGeometryEffect(id: "app-logo", in: islandNamespace)
             }
             .padding(.horizontal, 12)
             .frame(height: closedH)
@@ -311,7 +307,6 @@ struct NotchProgressView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Color(red: 0.28, green: 0.92, blue: 0.50))
-                    .matchedGeometryEffect(id: "checkmark-icon", in: islandNamespace)
             }
 
             VStack(alignment: .leading, spacing: 3) {
