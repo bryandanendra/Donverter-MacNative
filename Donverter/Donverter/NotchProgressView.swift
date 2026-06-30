@@ -58,14 +58,18 @@ struct NotchShape: Shape {
 
 struct SmoothProgressBar: View {
     let progress: Double
-    let foreground: Color
     @State private var animated: Double = 0
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.14)).frame(height: 3)
-                Capsule().fill(foreground)
+                Capsule()
+                    .fill(LinearGradient(
+                        colors: [Color(red: 0.0, green: 0.55, blue: 1.0), Color(red: 0.0, green: 0.88, blue: 0.85)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
                     .frame(width: max(geo.size.width * animated, 0), height: 3)
             }
         }
@@ -379,7 +383,7 @@ struct NotchProgressView: View {
     // MARK: - Active Detailed Card
 
     private func activeCard(label: String, progress: Double) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 ActivityDot()
                 Text(label)
@@ -389,15 +393,19 @@ struct NotchProgressView: View {
                     .truncationMode(.middle)
                 Spacer()
                 Text("\(Int(progress * 100))%")
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.6))
             }
 
-            SmoothProgressBar(progress: progress, foreground: .white).frame(height: 3)
+            SmoothProgressBar(progress: progress).frame(height: 3)
 
-            Text("Processing — hover/click details")
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.25))
+            HStack(spacing: 4) {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 10))
+                Text("Saving to Downloads folder")
+                    .font(.system(size: 10, design: .rounded))
+            }
+            .foregroundStyle(.white.opacity(0.35))
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
