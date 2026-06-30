@@ -179,12 +179,15 @@ struct NotchProgressView: View {
         let visible = controller.state.isVisible
         let stateName = controller.state.stateName
 
+        // Check if we are in any collapsing phase (either locally, globally dismissed, or hidden)
+        let isCollapsing = isCollapsingToNotch || controller.isAnimatingOut || !visible
+
         // Determine current dimensions based on the collapse-to-notch phase
-        let totalW = isCollapsingToNotch ? physicalNotchW : (isExpanded ? expandW : restW)
-        let totalH = isCollapsingToNotch ? closedH : (isExpanded ? closedH + expandH : closedH)
+        let totalW = isCollapsing ? physicalNotchW : (isExpanded ? expandW : restW)
+        let totalH = isCollapsing ? closedH : (isExpanded ? closedH + expandH : closedH)
         
         // Hide content when collapsed or collapsing to the notch
-        let contentOpacity = isCollapsingToNotch ? 0.0 : 1.0
+        let contentOpacity = isCollapsing ? 0.0 : 1.0
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
@@ -225,12 +228,12 @@ struct NotchProgressView: View {
             .contentShape(NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR))
             .scaleEffect(x: 1.0, y: squeezeScale, anchor: .top)
             // Expand scale
-            .scaleEffect(isExpanded && !isCollapsingToNotch ? 1.02 : 1.0, anchor: .top)
+            .scaleEffect(isExpanded && !isCollapsing ? 1.02 : 1.0, anchor: .top)
             .animation(.spring(response: 0.38, dampingFraction: 0.78), value: totalW)
             .animation(.spring(response: 0.38, dampingFraction: 0.78), value: totalH)
-            .animation(.easeInOut(duration: 0.18), value: isCollapsingToNotch)
+            .animation(.easeInOut(duration: 0.18), value: isCollapsing)
             .onHover { hovering in
-                guard visible else { return }
+                guard visible && !controller.isAnimatingOut else { return }
                 if hovering {
                     isCollapsingToNotch = false
                     isExpanded = true
@@ -272,21 +275,20 @@ struct NotchProgressView: View {
             if nowVisible && !wasVisible {
                 isCollapsingToNotch = true
                 glowColor = .white
-                // Appear: bloom from notch out to compact size
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.65)) {
-                    isCollapsingToNotch = false
-                }
-                // White glow flash
-                glowOpacity = 0.9
-                withAnimation(.easeOut(duration: 0.55).delay(0.05)) {
-                    glowOpacity = 0
+                glowOpacity = 0.95
+                
+                // Appear: bloom from notch out to compact size in next runloop tick
+                DispatchQueue.main.async {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.65)) {
+                        isCollapsingToNotch = false
+                    }
+                    withAnimation(.easeOut(duration: 0.55).delay(0.05)) {
+                        glowOpacity = 0
+                    }
                 }
             } else if !nowVisible && wasVisible {
-                // Dismiss: collapse back to notch and fade out
-                isExpanded = false
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.80)) {
-                    isCollapsingToNotch = true
-                }
+                // Ensure it is collapsed and ready for the next appearance
+                isCollapsingToNotch = true
             }
             wasVisible = nowVisible
         }
@@ -304,7 +306,7 @@ struct NotchProgressView: View {
         .onAppear {
             wasVisible = visible
             isExpanded = false
-            isCollapsingToNotch = false
+            isCollapsingToNotch = true
             prevStateName = controller.state.stateName
         }
     }

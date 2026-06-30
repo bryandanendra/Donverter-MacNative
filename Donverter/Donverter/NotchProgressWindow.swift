@@ -37,11 +37,13 @@ enum NotchProgressState: Equatable {
 final class NotchProgressController: ObservableObject {
     static let shared = NotchProgressController()
     @Published private(set) var state: NotchProgressState = .hidden
+    @Published var isAnimatingOut: Bool = false
     private var autoDismissTask: Task<Void, Never>?
     private init() {}
 
     func show(label: String, progress: Double, filePath: String?) {
         autoDismissTask?.cancel()
+        isAnimatingOut = false
         state = .active(label: label, progress: min(max(progress, 0), 1), filePath: filePath)
     }
 
@@ -59,14 +61,22 @@ final class NotchProgressController: ObservableObject {
             autoDismissTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(activeSeconds * 1_000_000_000))
                 guard !Task.isCancelled else { return }
-                await MainActor.run { self?.state = .hidden }
+                await MainActor.run { self?.dismiss() }
             }
         }
     }
 
     func dismiss() {
         autoDismissTask?.cancel()
-        state = .hidden
+        isAnimatingOut = true
+        
+        Task {
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            await MainActor.run {
+                self.state = .hidden
+                self.isAnimatingOut = false
+            }
+        }
     }
 }
 
@@ -165,13 +175,16 @@ final class NotchProgressWindowManager {
         p.orderFrontRegardless()
         panel = p
 
-        // Update click-through when state changes
-        NotchProgressController.shared.$state
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.updateVisibilityAndClickThrough()
-            }
-            .store(in: &cancellables)
+        // Update click-through when state or animation state changes
+        Publishers.CombineLatest(
+            NotchProgressController.shared.$state,
+            NotchProgressController.shared.$isAnimatingOut
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _, _ in
+            self?.updateVisibilityAndClickThrough()
+        }
+        .store(in: &cancellables)
 
         // Update when preferences change
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
@@ -197,7 +210,8 @@ final class NotchProgressWindowManager {
         guard let p = panel else { return }
         let state = NotchProgressController.shared.state
         let enabled = UserDefaults.standard.object(forKey: "dynamicIslandEnabled") as? Bool ?? true
-        let shouldBeVisible = state.isVisible && enabled
+        let isAnimatingOut = NotchProgressController.shared.isAnimatingOut
+        let shouldBeVisible = (state.isVisible || isAnimatingOut) && enabled
         
         p.ignoresMouseEvents = !shouldBeVisible
         p.alphaValue = shouldBeVisible ? 1.0 : 0.0
