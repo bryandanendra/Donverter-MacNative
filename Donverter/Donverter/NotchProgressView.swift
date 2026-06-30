@@ -117,7 +117,7 @@ struct ActivityDot: View {
 
 struct NotchProgressView: View {
     @EnvironmentObject var controller: NotchProgressController
-    @State private var isHovering = false
+    @State private var isButtonHovered = false
     @AppStorage("notchWidthExtension") private var widthExtension: Double = 90.0
     @AppStorage("dynamicIslandAlwaysExpanded") private var alwaysExpanded: Bool = false
     @AppStorage("dynamicIslandBGColor") private var bgColorHex: String = "#000000"
@@ -428,17 +428,25 @@ struct NotchProgressView: View {
             Spacer()
 
             if filePath != nil {
-                HStack(spacing: 5) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 10, weight: .semibold))
+                HStack(spacing: 6) {
                     Text("Show")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(red: 0.0, green: 0.48, blue: 1.0))
+                    
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3.5)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Color(red: 0.0, green: 0.48, blue: 1.0)))
                 }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Capsule().fill(isHovering ? Color.white : Color.white.opacity(0.88)))
-                .animation(.easeInOut(duration: 0.12), value: isHovering)
+                .padding(.leading, 12)
+                .padding(.trailing, 6)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(isButtonHovered ? Color.white : Color.white.opacity(0.92)))
+                .scaleEffect(isButtonHovered ? 1.04 : 1.0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isButtonHovered)
+                .onHover { isButtonHovered = $0 }
             }
         }
         .padding(.horizontal, 16)
