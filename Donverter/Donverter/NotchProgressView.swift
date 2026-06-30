@@ -227,16 +227,16 @@ struct NotchProgressView: View {
             .frame(height: closedH)
 
         case .done(_, _):
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 // Checkmark green icon and label on the left
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color(red: 0.28, green: 0.92, blue: 0.50))
-                    Text("Done")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color(red: 0.28, green: 0.92, blue: 0.50))
+                    .frame(width: 16, height: 16)
+                
+                Text("Done")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
                 
                 Spacer()
                 
@@ -247,8 +247,8 @@ struct NotchProgressView: View {
                     .frame(width: 18, height: 18)
                     .clipShape(RoundedRectangle(cornerRadius: 4.5))
             }
-            .padding(.horizontal, 12)
-            .frame(height: closedH)
+            .padding(.horizontal, 10)
+            .frame(width: restW, height: closedH, alignment: .center)
 
         case .hidden:
             EmptyView()
