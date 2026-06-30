@@ -21,6 +21,14 @@ enum NotchProgressState: Equatable {
         if case .hidden = self { return false }
         return true
     }
+
+    var stateName: String {
+        switch self {
+        case .hidden:  return "hidden"
+        case .active:  return "active"
+        case .done:    return "done"
+        }
+    }
 }
 
 // MARK: - Controller

@@ -119,23 +119,42 @@ struct NotchProgressView: View {
     @EnvironmentObject var controller: NotchProgressController
     @State private var isHovering = false
     @AppStorage("notchWidthExtension") private var widthExtension: Double = 90.0
-
     @AppStorage("dynamicIslandAlwaysExpanded") private var alwaysExpanded: Bool = false
     @AppStorage("dynamicIslandBGColor") private var bgColorHex: String = "#000000"
 
+    // --- Animation state ---
+    /// Glow overlay opacity (white on appear, green on done)
+    @State private var glowOpacity: Double = 0
+    @State private var glowColor: Color = .white
+    /// Squeeze Y scale for expand animation
+    @State private var squeezeScale: CGFloat = 1.0
+    /// Manually controlled expand state
+    @State private var isExpanded: Bool = false
+    /// State to control the transition when collapsing back into the physical notch first
+    @State private var isCollapsingToNotch: Bool = false
+    /// Tracks previous visibility to detect appear/dismiss transitions
+    @State private var wasVisible: Bool = false
+    /// Tracks previous state to detect active→done transition
+    @State private var prevStateName: String = "hidden"
+
     // Geometry parameters (matches variables in NotchProgressWindow.swift)
+    private var physicalNotchW: CGFloat {
+        let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens[0]
+        if screen.safeAreaInsets.top > 0 {
+            if let topLeft = screen.auxiliaryTopLeftArea?.width,
+               let topRight = screen.auxiliaryTopRightArea?.width {
+                return screen.frame.width - topLeft - topRight + 4
+            } else {
+                return 186 // Fallback physical notch width (MBP 14")
+            }
+        }
+        return 0 // Non-notch screens collapse to 0 width to disappear completely into top bezel
+    }
+
     private var restW: CGFloat {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens[0]
         if screen.safeAreaInsets.top > 0 {
-            let physicalWidth: CGFloat
-            if let topLeft = screen.auxiliaryTopLeftArea?.width,
-               let topRight = screen.auxiliaryTopRightArea?.width {
-                physicalWidth = screen.frame.width - topLeft - topRight + 4
-            } else {
-                physicalWidth = 186 // Fallback physical notch width (MBP 14")
-            }
-            // Add custom width extension from menu settings
-            return physicalWidth + CGFloat(widthExtension)
+            return physicalNotchW + CGFloat(widthExtension)
         }
         return 170 + CGFloat(widthExtension - 80) // Scale non-notch screen size proportionally
     }
@@ -158,10 +177,14 @@ struct NotchProgressView: View {
 
     var body: some View {
         let visible = controller.state.isVisible
-        let isExpanded = visible && (alwaysExpanded || isHovering)
+        let stateName = controller.state.stateName
+
+        // Determine current dimensions based on the collapse-to-notch phase
+        let totalW = isCollapsingToNotch ? physicalNotchW : (isExpanded ? expandW : restW)
+        let totalH = isCollapsingToNotch ? closedH : (isExpanded ? closedH + expandH : closedH)
         
-        let totalW = isExpanded ? expandW : restW
-        let totalH = isExpanded ? closedH + expandH : closedH
+        // Hide content when collapsed or collapsing to the notch
+        let contentOpacity = isCollapsingToNotch ? 0.0 : 1.0
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
@@ -170,38 +193,120 @@ struct NotchProgressView: View {
                     .fill(Color.black)
                     .opacity(visible ? 1.0 : 0.0)
 
-                // Content router (Opacity-based routing for smooth matchedGeometryEffect rendering)
+                // ✨ Glow flash overlay (appear = white, done = green)
+                NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR)
+                    .fill(glowColor.opacity(0.35))
+                    .blendMode(.screen)
+                    .opacity(glowOpacity)
+                    .allowsHitTesting(false)
+
+                // Content router
                 if visible {
                     // Mode 1: Compact/closed resting view
                     compactView
                         .frame(width: restW, height: closedH)
-                        .opacity(isExpanded ? 0.0 : 1.0)
-                        .scaleEffect(isExpanded ? 0.92 : 1.0)
+                        .opacity(isExpanded ? 0.0 : contentOpacity)
+                        .scaleEffect(isExpanded ? 0.88 : 1.0)
                         .allowsHitTesting(!isExpanded)
-                    
+
                     // Mode 2: Hover-Expanded detailed card view
                     VStack(spacing: 0) {
                         Color.clear.frame(height: closedH)
                         contentView
                             .frame(width: expandW, height: expandH)
                     }
-                    .opacity(isExpanded ? 1.0 : 0.0)
-                    .scaleEffect(isExpanded ? 1.0 : 0.96)
+                    .opacity(isExpanded ? contentOpacity : 0.0)
+                    .scaleEffect(isExpanded ? 1.0 : 0.95)
                     .allowsHitTesting(isExpanded)
                 }
             }
             .frame(width: totalW, height: totalH, alignment: .top)
             .clipShape(NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR))
             .contentShape(NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR))
-            .scaleEffect(isExpanded ? 1.02 : (isHovering && visible ? 1.012 : 1.0), anchor: .top)
-            .animation(.spring(response: 0.38, dampingFraction: 0.76), value: isExpanded)
-            .animation(.spring(response: 0.38, dampingFraction: 0.76), value: visible)
-            .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isHovering)
-            .onHover   { isHovering = $0 }
+            .scaleEffect(x: 1.0, y: squeezeScale, anchor: .top)
+            // Expand scale
+            .scaleEffect(isExpanded && !isCollapsingToNotch ? 1.02 : 1.0, anchor: .top)
+            .animation(.spring(response: 0.38, dampingFraction: 0.78), value: totalW)
+            .animation(.spring(response: 0.38, dampingFraction: 0.78), value: totalH)
+            .animation(.easeInOut(duration: 0.18), value: isCollapsingToNotch)
+            .onHover { hovering in
+                guard visible else { return }
+                if hovering {
+                    isCollapsingToNotch = false
+                    isExpanded = true
+                    
+                    // Squeeze in Y before blooming
+                    squeezeScale = 0.88
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.55)) {
+                        squeezeScale = 1.05
+                    }
+                    withAnimation(.spring(response: 0.36, dampingFraction: 0.72).delay(0.14)) {
+                        squeezeScale = 1.0
+                    }
+                } else {
+                    // ── COLLAPSE TO NOTCH FIRST ──
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        isCollapsingToNotch = true
+                    }
+                    
+                    // Once fully hidden inside physical notch boundaries (e.g. 350ms)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        guard isCollapsingToNotch else { return }
+                        
+                        // Swap modes internally (while hidden)
+                        isExpanded = false
+                        
+                        // Bloom back out as compact pill
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) {
+                            isCollapsingToNotch = false
+                        }
+                    }
+                }
+            }
             .onTapGesture { handleTap() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea()
+        // ── Watch visibility: trigger morph in/out ──────────────────────
+        .onChange(of: visible) { _, nowVisible in
+            if nowVisible && !wasVisible {
+                isCollapsingToNotch = true
+                glowColor = .white
+                // Appear: bloom from notch out to compact size
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.65)) {
+                    isCollapsingToNotch = false
+                }
+                // White glow flash
+                glowOpacity = 0.9
+                withAnimation(.easeOut(duration: 0.55).delay(0.05)) {
+                    glowOpacity = 0
+                }
+            } else if !nowVisible && wasVisible {
+                // Dismiss: collapse back to notch and fade out
+                isExpanded = false
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.80)) {
+                    isCollapsingToNotch = true
+                }
+            }
+            wasVisible = nowVisible
+        }
+        // ── Watch state: green glow on done ────────────────────────────
+        .onChange(of: stateName) { _, newState in
+            if newState == "done" && prevStateName == "active" {
+                glowColor = Color(red: 0.28, green: 0.92, blue: 0.50)
+                glowOpacity = 0.90
+                withAnimation(.easeOut(duration: 0.65).delay(0.05)) {
+                    glowOpacity = 0
+                }
+            }
+            prevStateName = newState
+        }
+        .onAppear {
+            wasVisible = visible
+            isExpanded = false
+            isCollapsingToNotch = false
+            prevStateName = controller.state.stateName
+        }
     }
 
     // MARK: - Compact View (Resting Mode)
