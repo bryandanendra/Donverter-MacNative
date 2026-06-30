@@ -8,7 +8,6 @@ import traceback
 from PIL import Image
 from pillow_heif import register_heif_opener
 import zipfile
-import fitz  # PyMuPDF for PDF rendering
 
 # Register HEIF opener to support HEIC
 try:
@@ -199,6 +198,7 @@ def _render_pdf_to_folder(pdf_path, output_folder, target_fm, ext_map, quality, 
     when processing multiple PDFs.
     Returns number of successfully converted pages.
     """
+    import fitz  # PyMuPDF for PDF rendering
     pdf_name = Path(pdf_path).stem
 
     send_to_swift("status", {"message": f"Opening PDF: {os.path.basename(pdf_path)}..."})

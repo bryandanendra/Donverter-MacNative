@@ -117,6 +117,7 @@ struct ActivityDot: View {
 
 struct NotchProgressView: View {
     @EnvironmentObject var controller: NotchProgressController
+    @Namespace private var islandNamespace
     @State private var isHovering = false
     @AppStorage("notchWidthExtension") private var widthExtension: Double = 90.0
 
@@ -165,36 +166,35 @@ struct NotchProgressView: View {
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                // Background shape
+                // Background shape - Solid black/custom color to match the physical notch exactly
                 NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR)
                     .fill(Color(hex: bgColorHex))
                     .opacity(visible ? 1.0 : 0.0)
 
-                // Content router
+                // Content router (Opacity-based routing for smooth matchedGeometryEffect rendering)
                 if visible {
-                    if alwaysExpanded || isHovering {
-                        // Mode 2: Hover-Expanded detailed card view
-                        VStack(spacing: 0) {
-                            Color.clear.frame(height: closedH)
-                            contentView
-                                .frame(width: expandW, height: expandH)
-                        }
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.95, anchor: .top)),
-                            removal:   .opacity.combined(with: .scale(scale: 0.95, anchor: .top))
-                        ))
-                    } else {
-                        // Mode 1: Compact/closed resting view
-                        compactView
-                            .frame(width: restW, height: closedH)
-                            .transition(.opacity)
+                    // Mode 1: Compact/closed resting view
+                    compactView
+                        .frame(width: restW, height: closedH)
+                        .opacity(isExpanded ? 0.0 : 1.0)
+                        .scaleEffect(isExpanded ? 0.92 : 1.0)
+                        .allowsHitTesting(!isExpanded)
+                    
+                    // Mode 2: Hover-Expanded detailed card view
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: closedH)
+                        contentView
+                            .frame(width: expandW, height: expandH)
                     }
+                    .opacity(isExpanded ? 1.0 : 0.0)
+                    .scaleEffect(isExpanded ? 1.0 : 0.96)
+                    .allowsHitTesting(isExpanded)
                 }
             }
             .frame(width: totalW, height: totalH, alignment: .top)
             .clipShape(NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR))
             .contentShape(NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR))
-            .scaleEffect(isHovering && visible ? 1.012 : 1.0, anchor: .top)
+            .scaleEffect(isExpanded ? 1.02 : (isHovering && visible ? 1.012 : 1.0), anchor: .top)
             .animation(.spring(response: 0.38, dampingFraction: 0.76), value: isExpanded)
             .animation(.spring(response: 0.38, dampingFraction: 0.76), value: visible)
             .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isHovering)
@@ -212,7 +212,7 @@ struct NotchProgressView: View {
         switch controller.state {
         case .active(let label, let progress, _):
             HStack(spacing: 8) {
-                // Circular progress ring only
+                // Circular progress ring (no matchedGeometryEffect to prevent layout distortion)
                 CircularProgressView(progress: progress, color: .white)
                 
                 Spacer()
@@ -223,17 +223,19 @@ struct NotchProgressView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 18, height: 18)
                     .clipShape(RoundedRectangle(cornerRadius: 4.5))
+                    .matchedGeometryEffect(id: "app-logo", in: islandNamespace)
             }
             .padding(.horizontal, 12)
             .frame(height: closedH)
 
         case .done(_, _):
             HStack(spacing: 8) {
-                // Checkmark green icon
+                // Checkmark green icon and label
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Color(red: 0.28, green: 0.92, blue: 0.50))
+                        .matchedGeometryEffect(id: "checkmark-icon", in: islandNamespace)
                     Text("Done")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.85))
@@ -247,6 +249,7 @@ struct NotchProgressView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 18, height: 18)
                     .clipShape(RoundedRectangle(cornerRadius: 4.5))
+                    .matchedGeometryEffect(id: "app-logo", in: islandNamespace)
             }
             .padding(.horizontal, 12)
             .frame(height: closedH)
@@ -308,6 +311,7 @@ struct NotchProgressView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Color(red: 0.28, green: 0.92, blue: 0.50))
+                    .matchedGeometryEffect(id: "checkmark-icon", in: islandNamespace)
             }
 
             VStack(alignment: .leading, spacing: 3) {

@@ -41,6 +41,9 @@ final class NotchProgressController: ObservableObject {
         autoDismissTask?.cancel()
         state = .done(label: label, filePath: filePath)
         
+        // Trigger generic haptic feedback on trackpad
+        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .default)
+        
         let behavior = UserDefaults.standard.string(forKey: "dynamicIslandDismissBehavior") ?? "timer"
         if behavior == "timer" {
             let seconds = UserDefaults.standard.double(forKey: "dynamicIslandDismissSeconds")

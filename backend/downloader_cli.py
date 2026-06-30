@@ -52,7 +52,7 @@ def force_reencode_to_h264(filepath):
     temp_output = filepath.replace('.mp4', '_h264_temp.mp4')
     try:
         result = subprocess.run([
-            get_ffmpeg_path(), '-i', filepath,
+            get_ffmpeg_path(), '-hwaccel', 'videotoolbox', '-i', filepath,
             '-c:v', 'h264_videotoolbox', '-q:v', '50',
             '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
             '-pix_fmt', 'yuv420p', '-y', temp_output
@@ -113,10 +113,11 @@ def download_video(url, platform, format_type='mp4', resolution='best'):
         if platform == 'youtube':
             if resolution and resolution != 'best':
                 # Batasi tinggi video maksimal sesuai resolusi yang diminta.
-                # Kita tidak memfilter codec di sini agar yt-dlp memilih resolusi tertinggi yang tersedia.
-                ydl_opts['format'] = f'bestvideo[height<={resolution}]+bestaudio/best'
+                # Utamakan AVC/H.264 (avc1) dan AAC (mp4a) untuk menghindari konversi ulang pasca-unduh.
+                ydl_opts['format'] = f'bestvideo[height<={resolution}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<={resolution}]+bestaudio/best'
             else:
-                ydl_opts['format'] = 'bestvideo+bestaudio/best'
+                # Default untuk 'best' dengan mengutamakan AVC/H.264 (maksimum 1080p untuk H.264 di YouTube)
+                ydl_opts['format'] = 'bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo+bestaudio/best'
             
             # Gunakan format_sort untuk memprioritaskan resolusi tertinggi terlebih dahulu,
             # kemudian memprioritaskan AVC/H.264 di antara format-format dengan resolusi yang sama.
