@@ -133,10 +133,44 @@ struct SettingsWindowView: View {
                 }
                 .disabled(!isIslandEnabled)
                 
-                ColorPicker("Background Color", selection: Binding(
-                    get: { Color(hex: bgColorHex) },
-                    set: { bgColorHex = $0.toHex() }
-                ))
+                LabeledContent("Background Color") {
+                    HStack(spacing: 8) {
+                        let colorPresets = [
+                            (hex: "#000000", name: "Pitch Black"),
+                            (hex: "#1C1C1E", name: "Space Gray"),
+                            (hex: "#2E3440", name: "Nordic Slate"),
+                            (hex: "#FFFFFF", name: "Pure White"),
+                            (hex: "#007AFF", name: "Deep Blue"),
+                            (hex: "#5856D6", name: "Midnight Purple"),
+                            (hex: "#FF3B30", name: "Coral Red")
+                        ]
+                        
+                        ForEach(colorPresets, id: \.hex) { preset in
+                            Button(action: {
+                                bgColorHex = preset.hex
+                            }) {
+                                Circle()
+                                    .fill(Color(hex: preset.hex))
+                                    .frame(width: 16, height: 16)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.primary.opacity(bgColorHex.uppercased() == preset.hex.uppercased() ? 0.8 : 0.25), lineWidth: bgColorHex.uppercased() == preset.hex.uppercased() ? 2.5 : 1)
+                                    )
+                                    .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
+                            }
+                            .buttonStyle(.plain)
+                            .help(preset.name)
+                        }
+                        
+                        ColorPicker("", selection: Binding(
+                            get: { Color(hex: bgColorHex) },
+                            set: { bgColorHex = $0.toHex() }
+                        ))
+                        .labelsHidden()
+                        .frame(width: 28, height: 18)
+                        .help("Custom Color...")
+                    }
+                }
                 .disabled(!isIslandEnabled)
             }
             
