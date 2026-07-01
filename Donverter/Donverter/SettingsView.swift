@@ -54,6 +54,7 @@ struct SettingsWindowView: View {
     @AppStorage("dynamicIslandAlwaysExpanded") private var alwaysExpanded: Bool = false
     @AppStorage("dynamicIslandEnabled") private var isIslandEnabled: Bool = true
     @AppStorage("dynamicIslandBGColor") private var bgColorHex: String = "#000000"
+    @AppStorage("dynamicIslandMaterialStyle") private var materialStyle: String = "solid"
     
     @AppStorage("dynamicIslandDismissBehavior") private var dismissBehavior: String = "timer"
     @AppStorage("dynamicIslandDismissSeconds") private var dismissSeconds: Double = 5.0
@@ -170,6 +171,15 @@ struct SettingsWindowView: View {
                         .frame(width: 28, height: 18)
                         .help("Custom Color...")
                     }
+                }
+                .disabled(!isIslandEnabled)
+
+                Picker("Background Style", selection: $materialStyle) {
+                    Text("Solid Color").tag("solid")
+                    Text("Glass (Ultra Thin)").tag("ultraThin")
+                    Text("Glass (Thin)").tag("thin")
+                    Text("Glass (Regular)").tag("regular")
+                    Text("Glass (Thick)").tag("thick")
                 }
                 .disabled(!isIslandEnabled)
             }

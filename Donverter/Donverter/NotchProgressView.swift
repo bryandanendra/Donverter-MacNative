@@ -135,6 +135,8 @@ struct NotchProgressView: View {
     @AppStorage("notchWidthExtension") private var widthExtension: Double = 90.0
     @AppStorage("dynamicIslandAlwaysExpanded") private var alwaysExpanded: Bool = false
     @AppStorage("dynamicIslandBGColor") private var bgColorHex: String = "#000000"
+    @AppStorage("dynamicIslandMaterialStyle") private var materialStyle: String = "solid"
+    @Environment(\.colorScheme) var colorScheme
 
     // --- Animation state ---
     /// Glow overlay opacity (white on appear, green on done)
@@ -186,7 +188,11 @@ struct NotchProgressView: View {
     }
 
     private var isLightBg: Bool {
-        Color(hex: bgColorHex).isLight()
+        if materialStyle == "solid" {
+            return Color(hex: bgColorHex).isLight()
+        } else {
+            return colorScheme == .light
+        }
     }
     
     private var primaryTextColor: Color {
@@ -203,6 +209,16 @@ struct NotchProgressView: View {
     
     private var componentBaseColor: Color {
         isLightBg ? Color.black : Color.white
+    }
+
+    private func getNSMaterial(for style: String) -> NSVisualEffectView.Material {
+        switch style {
+        case "ultraThin":  return .hudWindow
+        case "thin":       return .popover
+        case "regular":    return .menu
+        case "thick":      return .underWindowBackground
+        default:           return .popover
+        }
     }
 
     private var topR: CGFloat {
@@ -229,10 +245,21 @@ struct NotchProgressView: View {
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                // Background shape - Filled with customized background color
-                NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR, isNotch: isNotchScreen)
-                    .fill(Color(hex: bgColorHex))
-                    .opacity(visible ? 1.0 : 0.0)
+                // Background shape - Solid Color or Glassmorphism
+                if materialStyle == "solid" {
+                    NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR, isNotch: isNotchScreen)
+                        .fill(Color(hex: bgColorHex))
+                        .opacity(visible ? 1.0 : 0.0)
+                } else {
+                    NotchVisualEffectView(material: getNSMaterial(for: materialStyle), blendingMode: .behindWindow)
+                        .clipShape(NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR, isNotch: isNotchScreen))
+                        .overlay(
+                            NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR, isNotch: isNotchScreen)
+                                // Soft tint layer matching the chosen color
+                                .fill(Color(hex: bgColorHex).opacity(isLightBg ? 0.08 : 0.22))
+                        )
+                        .opacity(visible ? 1.0 : 0.0)
+                }
 
                 // ✨ Glow flash overlay (appear = white, done = green)
                 NotchShape(topCornerRadius: topR, bottomCornerRadius: bottomR, isNotch: isNotchScreen)
@@ -533,5 +560,25 @@ extension Color {
         // Relative luminance WCAG formula: 0.299*R + 0.587*G + 0.114*B
         let luminance = 0.299 * r + 0.587 * g + 0.114 * b
         return luminance > 0.5
+    }
+}
+
+// MARK: - NSVisualEffectView Wrapper for True Desktop Blur
+
+struct NotchVisualEffectView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
     }
 }
