@@ -26,10 +26,16 @@ This application delivers a highly lightweight, responsive, and seamless user ex
 You can download the latest pre-compiled macOS installer directly from the link above or visit the [Releases page](https://github.com/bryandanendra/Donverter-MacNative/releases).
 
 > [!NOTE]
-> Since this application is ad-hoc signed, macOS Gatekeeper might block it on first launch. To run it:
+> Since this application is ad-hoc signed, macOS Gatekeeper might block it or show a **"damaged and can't be opened"** warning on first launch. To run it:
 > 1. Double-click the downloaded `.dmg` and drag **Donverter** to your **Applications** folder.
 > 2. Open **Applications**, right-click **Donverter.app**, and select **Open**.
 > 3. Click **Open** on the confirmation dialog. (Or go to **System Settings > Privacy & Security** and select **Open Anyway**). This is only required once.
+> 
+> **Alternative Terminal Solution (if macOS says the app is damaged):**
+> Open Terminal and run the following command to remove the quarantine flag:
+> ```bash
+> xattr -cr /Applications/Donverter.app
+> ```
 
 ---
 
