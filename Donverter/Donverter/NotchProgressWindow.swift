@@ -123,7 +123,7 @@ private func hasPhysicalNotch(_ screen: NSScreen) -> Bool {
 
 // MARK: - Sizing constants
 
-private let openNotchW: CGFloat  = 320
+private let openNotchW: CGFloat  = 600
 private let openNotchH: CGFloat  = 90
 private let bottomPad: CGFloat   = 18
 
