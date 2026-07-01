@@ -42,6 +42,12 @@ Inspired by Apple's Dynamic Island, Donverter features a floating progress bar t
 * **Hover to Expand**: Hover your mouse cursor over the notch to expand the Dynamic Island into a detailed card showing download percentage, speed, filename, and action buttons.
 * **Click to Reveal**: Click the **Show** button or click on the Dynamic Island itself to open the downloaded file directly in Finder.
 
+<p align="center">
+  <img src="assets/compact-dynamic.png" width="48%" alt="Compact Notch Mode" />
+  &nbsp;
+  <img src="assets/wide-dynamic.png" width="48%" alt="Expanded Notch Card" />
+</p>
+
 ### ⚙️ Native macOS Settings Window (`Cmd + ,`)
 Access comprehensive application settings directly from the system menu bar (**Donverter -> Settings...**) or simply by pressing the standard Mac shortcut **`Cmd + ,`**:
 * **Enable Toggle**: Enable or fully disable the Dynamic Island. When disabled, the notch area is completely click-through.
@@ -60,10 +66,18 @@ Supports downloading with the highest quality (up to 4K) and Audio (MP3) output 
 * **Smart Auto-Fill**: Simply open the app, and Donverter will automatically detect media links in your clipboard and paste them into the text field.
 * **Smart Format Detection**: Automatically converts video codecs to standard H.264 (QuickTime compatible) for videos from Instagram/TikTok, ensuring they can be played on macOS without issues.
 
+<p align="center">
+  <img src="assets/donverter.png" width="85%" alt="Video & Audio Downloader Interface" />
+</p>
+
 ### 🖼️ Batch Image Converter
 Convert multiple images (*PNG, JPG, HEIC, WEBP*) to your target format simultaneously:
 * **Smart Compression**: Reduces file size by up to **50%** while maintaining high visual quality.
 * **Auto-Zip**: Automatically compresses multiple converted files into a single `.zip` file for easier organization.
+
+<p align="center">
+  <img src="assets/converter.png" width="85%" alt="Batch Image Converter Interface" />
+</p>
 
 ### 🧹 Smart Cleanup Engine
 Accessible via the top Menu Bar (**Maintenance -> Clear Cache** or shortcut **`Cmd + Shift + K`**) to calculate temporary cache size and clear it in one click to save SSD space on your Mac.
