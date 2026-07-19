@@ -163,6 +163,8 @@ struct DonverterApp: App {
     init() {
         // Boot the Dynamic Island-style notch progress overlay
         _ = NotchProgressWindowManager.shared
+        // Mode simulasi island (DONVERTER_ISLAND_DEMO=1) untuk preview/QC
+        NotchIslandDemo.run()
     }
 
     var body: some Scene {

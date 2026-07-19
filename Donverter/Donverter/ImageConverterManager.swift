@@ -54,7 +54,7 @@ class ImageConverterManager: ObservableObject {
             self.convertedFilePath = nil
             // Show notch overlay
             let startLabel = self.isPdfMode ? "Extracting PDF..." : "Converting..."
-            NotchProgressController.shared.show(label: startLabel, progress: 0.0, filePath: nil)
+            NotchProgressController.shared.update(.convert, label: startLabel, progress: 0.0, filePath: nil)
         }
         
         guard let cliURL = Bundle.main.url(forResource: "image_converter_cli", withExtension: nil) else {
@@ -152,7 +152,7 @@ class ImageConverterManager: ObservableObject {
                 let fraction = Double(pct) / 100.0
                 self.progress = fraction
                 let fileLabel = update.current_file.map { "Converting \($0)" } ?? "Converting..."
-                NotchProgressController.shared.show(label: fileLabel, progress: fraction, filePath: nil)
+                NotchProgressController.shared.update(.convert, label: fileLabel, progress: fraction, filePath: nil)
             }
             if let file = update.current_file { self.statusMessage = "Converting: \(file)..." }
         case "status":
@@ -163,11 +163,11 @@ class ImageConverterManager: ObservableObject {
             self.convertedFilePath = update.filepath
             self.isConverting = false
             self.selectedFiles = []
-            NotchProgressController.shared.markDone(label: "Conversion Complete", filePath: update.filepath)
+            NotchProgressController.shared.markDone(.convert, label: "Conversion Complete", filePath: update.filepath)
         case "error":
             self.statusMessage = "Error: \(update.message ?? "Unknown error")"
             self.isConverting = false
-            NotchProgressController.shared.dismiss()
+            NotchProgressController.shared.dismiss(.convert)
         default: break
         }
     }

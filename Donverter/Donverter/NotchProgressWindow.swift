@@ -31,6 +31,17 @@ enum NotchProgressState: Equatable {
     }
 }
 
+// MARK: - Task Identity
+
+/// Sumber task yang bisa menampilkan progress di island.
+/// DownloadManager dan ImageConverterManager dulu sama-sama menimpa satu state
+/// tunggal; sekarang tiap sumber punya slot sendiri dan island memilih mana
+/// yang ditampilkan.
+enum NotchTaskKind: String, CaseIterable {
+    case download
+    case convert
+}
+
 // MARK: - Controller
 
 @MainActor
@@ -38,41 +49,113 @@ final class NotchProgressController: ObservableObject {
     static let shared = NotchProgressController()
     @Published private(set) var state: NotchProgressState = .hidden
     @Published var isAnimatingOut: Bool = false
-    private var autoDismissTask: Task<Void, Never>?
-    private init() {}
+    /// Jumlah task yang masih berjalan — badge "N tasks" tampil saat >= 2.
+    @Published private(set) var activeTaskCount: Int = 0
 
-    func show(label: String, progress: Double, filePath: String?) {
-        autoDismissTask?.cancel()
-        isAnimatingOut = false
-        state = .active(label: label, progress: min(max(progress, 0), 1), filePath: filePath)
+    private struct NotchTask {
+        let kind: NotchTaskKind
+        var label: String
+        var progress: Double
+        var filePath: String?
+        var isDone: Bool
+        var lastUpdate: Date
     }
 
-    func markDone(label: String, filePath: String?) {
-        autoDismissTask?.cancel()
-        state = .done(label: label, filePath: filePath)
-        
+    private var tasks: [NotchTaskKind: NotchTask] = [:]
+    private var autoDismissTasks: [NotchTaskKind: Task<Void, Never>] = [:]
+    /// Task yang sedang ditampilkan island. Sticky: dipertahankan selama masih
+    /// ada, supaya label tidak bergantian tiap sumber lain mengirim progress.
+    private(set) var displayedKind: NotchTaskKind?
+    private init() {}
+
+    func update(_ kind: NotchTaskKind, label: String, progress: Double, filePath: String?) {
+        cancelAutoDismiss(for: kind)
+        tasks[kind] = NotchTask(
+            kind: kind, label: label,
+            progress: min(max(progress, 0), 1),
+            filePath: filePath, isDone: false, lastUpdate: Date()
+        )
+        refreshState()
+    }
+
+    func markDone(_ kind: NotchTaskKind, label: String, filePath: String?) {
+        cancelAutoDismiss(for: kind)
+        tasks[kind] = NotchTask(
+            kind: kind, label: label, progress: 1.0,
+            filePath: filePath, isDone: true, lastUpdate: Date()
+        )
+
         // Trigger generic haptic feedback on trackpad
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .default)
-        
+
         let behavior = UserDefaults.standard.string(forKey: "dynamicIslandDismissBehavior") ?? "timer"
         if behavior == "timer" {
             let seconds = UserDefaults.standard.double(forKey: "dynamicIslandDismissSeconds")
             let activeSeconds = seconds > 0 ? seconds : 5.0
-            autoDismissTask = Task { [weak self] in
+            autoDismissTasks[kind] = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(activeSeconds * 1_000_000_000))
                 guard !Task.isCancelled else { return }
-                await MainActor.run { self?.dismiss() }
+                await MainActor.run { self?.dismiss(kind) }
             }
         }
+        refreshState()
     }
 
-    func dismiss() {
-        autoDismissTask?.cancel()
+    /// Hapus satu task (error, cancel, atau timer done yang kadaluarsa).
+    /// Island berpindah ke task lain kalau masih ada; menutup kalau kosong.
+    func dismiss(_ kind: NotchTaskKind) {
+        cancelAutoDismiss(for: kind)
+        tasks[kind] = nil
+        refreshState()
+    }
+
+    /// Dipanggil view saat user men-tap done card: tutup task yang tampil.
+    func dismissDisplayed() {
+        if let kind = displayedKind { dismiss(kind) }
+    }
+
+    private func cancelAutoDismiss(for kind: NotchTaskKind) {
+        autoDismissTasks[kind]?.cancel()
+        autoDismissTasks[kind] = nil
+    }
+
+    private func refreshState() {
+        activeTaskCount = tasks.values.filter { !$0.isDone }.count
+
+        // 1. Sticky: pertahankan task yang sedang tampil selama masih ada
+        //    (termasuk saat baru berubah jadi done — done card-nya kebagian tampil).
+        // 2. Kalau tidak, pilih task aktif yang paling baru update; lalu done card.
+        // 3. Kosong → animasi menutup.
+        let next: NotchTask?
+        if let kind = displayedKind, let current = tasks[kind] {
+            next = current
+        } else {
+            next = tasks.values.sorted { a, b in
+                if a.isDone != b.isDone { return !a.isDone }
+                return a.lastUpdate > b.lastUpdate
+            }.first
+        }
+
+        guard let task = next else {
+            displayedKind = nil
+            if state.isVisible { animateOutAndHide() }
+            return
+        }
+
+        displayedKind = task.kind
+        isAnimatingOut = false
+        state = task.isDone
+            ? .done(label: task.label, filePath: task.filePath)
+            : .active(label: task.label, progress: task.progress, filePath: task.filePath)
+    }
+
+    private func animateOutAndHide() {
         isAnimatingOut = true
-        
         Task {
             try? await Task.sleep(nanoseconds: 350_000_000)
             await MainActor.run {
+                // Batal menyembunyikan jika ada task baru masuk selama animasi
+                guard self.tasks.isEmpty else { return }
                 self.state = .hidden
                 self.isAnimatingOut = false
             }

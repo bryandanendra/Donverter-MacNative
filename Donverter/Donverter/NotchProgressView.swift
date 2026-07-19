@@ -386,9 +386,20 @@ struct NotchProgressView: View {
             HStack(spacing: 8) {
                 // Circular progress ring only
                 CircularProgressView(progress: progress, color: primaryTextColor, baseColor: componentBaseColor)
-                
+
+                // Badge jumlah task saat lebih dari satu berjalan bersamaan
+                if controller.activeTaskCount >= 2 {
+                    Text("\(controller.activeTaskCount)")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(primaryTextColor.opacity(0.85))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(Capsule().fill(componentBaseColor.opacity(0.18)))
+                        .fixedSize()
+                }
+
                 Spacer()
-                
+
                 // App Logo / Download Icon on the right
                 Image("donverter-icon")
                     .resizable()
@@ -454,6 +465,14 @@ struct NotchProgressView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
+                if controller.activeTaskCount >= 2 {
+                    Text("\(controller.activeTaskCount) tasks")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(secondaryTextColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
+                        .background(Capsule().fill(componentBaseColor.opacity(0.14)))
+                }
                 Text("\(Int(progress * 100))%")
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(secondaryTextColor)
@@ -541,7 +560,7 @@ struct NotchProgressView: View {
         }
         Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
-            await MainActor.run { controller.dismiss() }
+            await MainActor.run { controller.dismissDisplayed() }
         }
     }
 }

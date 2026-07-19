@@ -43,7 +43,7 @@ class DownloadManager: ObservableObject {
             self.downloadedFilePath = nil
             self.wasCancelled = false
             // Show notch overlay
-            NotchProgressController.shared.show(label: "Downloading...", progress: 0.0, filePath: nil)
+            NotchProgressController.shared.update(.download, label: "Downloading...", progress: 0.0, filePath: nil)
         }
         
         guard let cliURL = Bundle.main.url(forResource: "downloader_cli", withExtension: nil) else {
@@ -134,7 +134,7 @@ class DownloadManager: ObservableObject {
                     self?.statusMessage = "Download cancelled."
                     self?.progress = 0.0
                     logger.log("INFO", "Download cancelled by user.")
-                    NotchProgressController.shared.dismiss()
+                    NotchProgressController.shared.dismiss(.download)
                 } else if let progress = self?.progress, progress < 1.0, self?.downloadedFilePath == nil {
                     // Hanya overwrite jika statusnya belum diganti menjadi pesan error oleh Swift
                     if let msg = self?.statusMessage, !msg.hasPrefix("Error") {
@@ -176,7 +176,7 @@ class DownloadManager: ObservableObject {
             if let percentStr = update.percent, let percentDouble = Double(percentStr) {
                 let pct = percentDouble / 100.0
                 self.progress = pct
-                NotchProgressController.shared.show(label: "Downloading...", progress: pct, filePath: nil)
+                NotchProgressController.shared.update(.download, label: "Downloading...", progress: pct, filePath: nil)
             }
             let speed = update.speed ?? "-"
             self.statusMessage = "Downloading... (\(speed))"
@@ -187,11 +187,11 @@ class DownloadManager: ObservableObject {
             self.statusMessage = update.message ?? "Download Complete!"
             self.downloadedFilePath = update.filepath
             self.isDownloading = false
-            NotchProgressController.shared.markDone(label: "Download Complete", filePath: update.filepath)
+            NotchProgressController.shared.markDone(.download, label: "Download Complete", filePath: update.filepath)
         case "error":
             self.statusMessage = "Error: \(update.message ?? "Unknown error")"
             self.isDownloading = false
-            NotchProgressController.shared.dismiss()
+            NotchProgressController.shared.dismiss(.download)
         default: break
         }
     }
