@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import re
+import signal
 import subprocess
 import argparse
 from yt_dlp import YoutubeDL
@@ -10,6 +11,14 @@ import traceback
 
 DOWNLOAD_FOLDER = os.path.expanduser('~/Downloads')
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+def _handle_sigterm(signum, frame):
+    # Swift mengirim SIGTERM saat user menekan Cancel. sys.exit() melempar
+    # SystemExit sehingga subprocess.run yang sedang berjalan (ffmpeg) ikut
+    # di-kill oleh cleanup-nya subprocess, bukan jadi proses yatim.
+    sys.exit(143)
+
+signal.signal(signal.SIGTERM, _handle_sigterm)
 
 def get_ffmpeg_path():
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -90,6 +99,69 @@ def get_progress_hook():
             send_to_swift("status", {"message": "Download finished, processing video..."})
     return progress_hook
 
+def cleanup_partial_files(files_before):
+    """Hapus artefak download parsial yang BARU muncul selama sesi ini.
+
+    Dipanggil hanya saat user meng-cancel (SIGTERM). File .part milik download
+    yang gagal biasa sengaja dibiarkan supaya yt-dlp bisa resume. File lama
+    yang sudah ada sebelum sesi (files_before) tidak pernah disentuh.
+    """
+    for f in os.listdir(DOWNLOAD_FOLDER):
+        fpath = os.path.join(DOWNLOAD_FOLDER, f)
+        if fpath in files_before or not os.path.isfile(fpath):
+            continue
+        is_partial = (
+            f.endswith(('.part', '.ytdl', '.temp'))
+            or f.endswith('_h264_temp.mp4')
+            # Stream perantara pra-merge, mis. "Judul.f299.mp4" / "Judul.f140.m4a"
+            or re.search(r'\.f\d+\.\w+$', f) is not None
+        )
+        if is_partial:
+            try:
+                os.remove(fpath)
+            except OSError:
+                pass
+
+def resolve_downloaded_file(ydl, info, files_before):
+    """Cari path final hasil download.
+
+    Prioritas: metadata resmi dari yt-dlp (sudah memperhitungkan postprocessing
+    seperti ekstraksi MP3), lalu prepare_filename, dan terakhir baru diff isi
+    folder Downloads sebagai jaring pengaman.
+    """
+    # 1. Path final resmi dari yt-dlp (ter-update setelah postprocessing)
+    for entry in (info.get('requested_downloads') or []):
+        filepath = entry.get('filepath')
+        if filepath and os.path.isfile(filepath):
+            return filepath
+
+    # 2. prepare_filename — ekstensinya bisa berubah setelah postprocessing,
+    #    jadi coba juga varian .mp3/.mp4 dari nama dasar yang sama
+    try:
+        predicted = ydl.prepare_filename(info)
+    except Exception:
+        predicted = None
+    if predicted:
+        base = os.path.splitext(predicted)[0]
+        for candidate in [predicted, base + '.mp3', base + '.mp4']:
+            if os.path.isfile(candidate):
+                return candidate
+
+    # 3. Jaring pengaman: file baru di folder Downloads, ambil yang paling
+    #    baru dimodifikasi dan abaikan file sementara (.part/.ytdl)
+    new_files = []
+    for f in os.listdir(DOWNLOAD_FOLDER):
+        fpath = os.path.join(DOWNLOAD_FOLDER, f)
+        if fpath in files_before or not os.path.isfile(fpath):
+            continue
+        if f.endswith(('.part', '.ytdl', '.temp')):
+            continue
+        new_files.append(fpath)
+    if new_files:
+        return max(new_files, key=os.path.getmtime)
+
+    return None
+
 def download_video(url, platform, format_type='mp4', resolution='best'):
     send_to_swift("status", {"message": f"Initializing download for {platform}..."})
     
@@ -99,6 +171,9 @@ def download_video(url, platform, format_type='mp4', resolution='best'):
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
+        # Matikan progress bar bawaan yt-dlp — barisnya diakhiri \r dan bisa
+        # menempel dengan JSON kita di stdout. Progress dikirim via hook.
+        'noprogress': True,
         'ffmpeg_location': get_ffmpeg_path(),
     }
     
@@ -128,19 +203,12 @@ def download_video(url, platform, format_type='mp4', resolution='best'):
             ydl_opts['merge_output_format'] = 'mp4'
 
     files_before = set([os.path.join(DOWNLOAD_FOLDER, f) for f in os.listdir(DOWNLOAD_FOLDER)])
-    
+
     try:
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            
-            # Cari file hasil download
-            actual_file = None
-            for f in os.listdir(DOWNLOAD_FOLDER):
-                fpath = os.path.join(DOWNLOAD_FOLDER, f)
-                if fpath not in files_before and os.path.isfile(fpath):
-                    actual_file = fpath
-                    break
-            
+            actual_file = resolve_downloaded_file(ydl, info, files_before)
+
             if not actual_file:
                 raise Exception("Cannot find downloaded file.")
                 
@@ -159,6 +227,11 @@ def download_video(url, platform, format_type='mp4', resolution='best'):
                 "filename": os.path.basename(actual_file)
             })
 
+    except SystemExit:
+        # User menekan Cancel — bersihkan file parsial sesi ini lalu teruskan
+        # exit-nya (kode 143) agar Swift tahu ini pembatalan, bukan error.
+        cleanup_partial_files(files_before)
+        raise
     except Exception as e:
         send_to_swift("error", {"message": str(e)})
 

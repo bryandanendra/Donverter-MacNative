@@ -38,8 +38,39 @@ class AppCacheManager {
                 totalSize += getPathSize(atPath: path)
             }
         }
-        
+
+        // 5. File download parsial yatim di ~/Downloads (sisa crash / download terputus)
+        for url in findOrphanedPartialFiles() {
+            totalSize += getPathSize(atPath: url.path)
+        }
+
         return totalSize
+    }
+
+    /// Cari file parsial yatim (.part / .ytdl / .temp) di ~/Downloads.
+    /// Hanya file yang tidak disentuh > 5 menit — supaya tidak mengganggu
+    /// download yang sedang berjalan, baik milik app ini maupun aplikasi lain
+    /// (Firefox juga memakai ekstensi .part untuk download aktifnya).
+    static func findOrphanedPartialFiles() -> [URL] {
+        let fm = FileManager.default
+        let downloadsURL = fm.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
+        guard let items = try? fm.contentsOfDirectory(
+            at: downloadsURL,
+            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        let partialSuffixes = [".part", ".ytdl", ".temp"]
+        let cutoff = Date().addingTimeInterval(-5 * 60)
+
+        return items.filter { url in
+            let name = url.lastPathComponent
+            guard partialSuffixes.contains(where: { name.hasSuffix($0) }) else { return false }
+            guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
+                  values.isRegularFile == true,
+                  let mtime = values.contentModificationDate else { return false }
+            return mtime < cutoff
+        }
     }
     
     private static func getPathSize(atPath path: String) -> Int64 {
@@ -107,6 +138,11 @@ class AppCacheManager {
                 let path = (tmpDir as NSString).appendingPathComponent(file)
                 try? fm.removeItem(atPath: path)
             }
+        }
+
+        // Clear file download parsial yatim di ~/Downloads
+        for url in findOrphanedPartialFiles() {
+            try? fm.removeItem(at: url)
         }
     }
 }

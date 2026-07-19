@@ -20,8 +20,6 @@ APP_PATH="$PROJECT_DIR/Donverter/build/Release/Donverter.app"
 # Cari Python Virtual Environment / PyInstaller
 if [ -d "$PROJECT_DIR/venv/bin" ]; then
   PYTHON_VENV="$PROJECT_DIR/venv/bin"
-elif [ -d "/Users/a1234/Documents/CODING/Donverter/venv/bin" ]; then
-  PYTHON_VENV="/Users/a1234/Documents/CODING/Donverter/venv/bin"
 else
   PYTHON_VENV=""
 fi
@@ -87,10 +85,10 @@ cp -R "$APP_PATH" "$PROJECT_DIR/dmg_build/"
 ln -s /Applications "$PROJECT_DIR/dmg_build/Applications"
 
 # Hapus Installer DMG lama (jika ada) supaya aman nimpa
-rm -f "/Users/a1234/Downloads/DonverterInstaller.dmg"
+rm -f "$HOME/Downloads/DonverterInstaller.dmg"
 
 # Ciptakan DMG
-hdiutil create -volname "Donverter" -srcfolder "$PROJECT_DIR/dmg_build" -ov -format UDZO "/Users/a1234/Downloads/DonverterInstaller.dmg"
+hdiutil create -volname "Donverter" -srcfolder "$PROJECT_DIR/dmg_build" -ov -format UDZO "$HOME/Downloads/DonverterInstaller.dmg"
 
 # Bersihkan sisa
 rm -rf "$PROJECT_DIR/dmg_build"
