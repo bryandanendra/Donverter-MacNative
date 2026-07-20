@@ -45,3 +45,4 @@ add_assets.rb
 # CLI engine binaries — build artifacts, direproduksi oleh build_installer.sh
 Donverter/Donverter/Resources/downloader_cli
 Donverter/Donverter/Resources/image_converter_cli
+*.profraw
