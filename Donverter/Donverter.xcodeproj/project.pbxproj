@@ -37,22 +37,16 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7C45F9AF2F665B6500806A61 /* Donverter */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = Donverter;
 			sourceTree = "<group>";
 		};
 		7C45F9BD2F665B6600806A61 /* DonverterTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = DonverterTests;
 			sourceTree = "<group>";
 		};
 		7C45F9C72F665B6600806A61 /* DonverterUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = DonverterUITests;
 			sourceTree = "<group>";
 		};
