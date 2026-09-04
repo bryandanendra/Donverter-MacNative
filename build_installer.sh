@@ -49,7 +49,10 @@ cp "$PROJECT_DIR/backend/dist/image_converter_cli" "$PROJECT_DIR/Donverter/Donve
 
 echo "🛠️ 3/5 Mem-Build Ulang Xcode Swift App (.app)..."
 cd "$PROJECT_DIR/Donverter" || exit
-xcodebuild clean build \
+# Bersihkan folder build manual — Xcode versi baru menolak `clean` untuk
+# SYMROOT custom di luar DerivedData, jadi kita hapus sendiri lalu build.
+rm -rf "$PROJECT_DIR/Donverter/build"
+xcodebuild build \
   -project Donverter.xcodeproj \
   -scheme Donverter \
   -configuration Release \
@@ -59,22 +62,54 @@ xcodebuild clean build \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGNING_ALLOWED=NO
 
+# Guard: pastikan executable utama benar-benar dihasilkan
+if [ ! -f "$APP_PATH/Contents/MacOS/Donverter" ]; then
+  echo "❌ Error: Build gagal — executable utama tidak ada di bundle!"
+  echo "   Cek apakah ada file .swift duplikat (mis. 'File 2.swift') yang"
+  echo "   menyebabkan 'Invalid redeclaration'."
+  exit 1
+fi
+
 echo "✍️  4/5 Ad-hoc Code Signing App & Semua Binary di dalamnya..."
-# Sign semua binary PyInstaller di dalam Resources
-codesign --force --deep --sign - "$APP_PATH/Contents/Resources/downloader_cli" 2>/dev/null || true
-codesign --force --deep --sign - "$APP_PATH/Contents/Resources/image_converter_cli" 2>/dev/null || true
+# PENTING: folder proyek ada di ~/Documents yang tersync cloud (iCloud/file
+# provider). File provider terus meng-inject atribut `com.apple.fileprovider`
+# & FinderInfo ke bundle, membuat codesign gagal ("detritus not allowed")
+# walau sudah di-strip. Solusi: salin app ke lokasi non-sync (/tmp), lalu
+# strip + sign di sana. Semua langkah packaging berikutnya pakai salinan ini.
+SIGN_DIR="$(mktemp -d /tmp/donverter_sign.XXXXXX)"
+SIGNED_APP="$SIGN_DIR/Donverter.app"
+ditto "$APP_PATH" "$SIGNED_APP"
 
-# Sign seluruh .app bundle secara menyeluruh (deep)
-codesign --force --deep --sign - "$APP_PATH"
+# Buang extended attributes; di /tmp strip ini "nempel" (tidak di-re-inject).
+xattr -cr "$SIGNED_APP"
 
-# Verifikasi hasil signing
+# Sign binary PyInstaller di dalam Resources dulu (dari dalam ke luar)
+codesign --force --sign - --timestamp=none "$SIGNED_APP/Contents/Resources/downloader_cli"
+codesign --force --sign - --timestamp=none "$SIGNED_APP/Contents/Resources/image_converter_cli"
+
+# Sign seluruh .app bundle terakhir (deep untuk mencakup framework Swift)
+codesign --force --deep --sign - --timestamp=none "$SIGNED_APP"
+
+# Verifikasi hasil signing (strict)
 echo "🔍 Verifikasi Code Signing:"
-codesign --verify --verbose "$APP_PATH" && echo "✅ Signing sukses!" || echo "⚠️  Signing mungkin ada masalah, cek output di atas"
+if codesign --verify --deep --strict --verbose=2 "$SIGNED_APP" 2>&1; then
+  echo "✅ Signing sukses!"
+else
+  echo "❌ Signing GAGAL — app akan dianggap 'damaged'. Hentikan build."
+  rm -rf "$SIGN_DIR"
+  exit 1
+fi
 
 echo "📦 5/5 Membungkus menjadi Installer DonverterInstaller.pkg..."
 cd "$PROJECT_DIR" || exit
 
-PKG_BUILD_DIR="$PROJECT_DIR/pkg_build"
+APP_SIZE=$(du -sh "$SIGNED_APP" 2>/dev/null | cut -f1)
+echo "   ✅ App tersigning siap dipackage ($APP_SIZE)"
+
+# Staging & pkgbuild HARUS di /tmp (non-sync). Kalau di $PROJECT_DIR (dalam
+# ~/Documents yang tersync), file provider akan re-inject FinderInfo ke app
+# setelah signing → signature rusak → app "damaged" saat diinstall.
+PKG_BUILD_DIR="$(mktemp -d /tmp/donverter_pkg.XXXXXX)"
 PKG_STAGING="$PKG_BUILD_DIR/staging"
 PKG_OUTPUT="$HOME/Downloads/DonverterInstaller.pkg"
 INSTALLER_DIR="$PROJECT_DIR/installer"
@@ -83,8 +118,8 @@ INSTALLER_DIR="$PROJECT_DIR/installer"
 rm -rf "$PKG_BUILD_DIR"
 mkdir -p "$PKG_STAGING/Applications"
 
-# Copy app ke staging area
-cp -R "$APP_PATH" "$PKG_STAGING/Applications/"
+# Copy app TERSIGNING dari /tmp ke staging
+ditto "$SIGNED_APP" "$PKG_STAGING/Applications/Donverter.app"
 
 # Step 5a: Buat component package
 pkgbuild \
@@ -104,6 +139,7 @@ productbuild \
 
 # Bersihkan sisa
 rm -rf "$PKG_BUILD_DIR"
+rm -rf "$SIGN_DIR"
 
 echo ""
 echo "✅ SELESAI! Installer tersedia di: ~/Downloads/DonverterInstaller.pkg"
