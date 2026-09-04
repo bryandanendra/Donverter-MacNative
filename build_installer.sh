@@ -71,33 +71,46 @@ codesign --force --deep --sign - "$APP_PATH"
 echo "🔍 Verifikasi Code Signing:"
 codesign --verify --verbose "$APP_PATH" && echo "✅ Signing sukses!" || echo "⚠️  Signing mungkin ada masalah, cek output di atas"
 
-echo "📦 5/5 Membungkus menjadi Installer DonverterInstaller.dmg..."
+echo "📦 5/5 Membungkus menjadi Installer DonverterInstaller.pkg..."
 cd "$PROJECT_DIR" || exit
 
-# Bersihkan direktori build sementara jika ada
-rm -rf "$PROJECT_DIR/dmg_build"
-mkdir -p "$PROJECT_DIR/dmg_build"
+PKG_BUILD_DIR="$PROJECT_DIR/pkg_build"
+PKG_STAGING="$PKG_BUILD_DIR/staging"
+PKG_OUTPUT="$HOME/Downloads/DonverterInstaller.pkg"
+INSTALLER_DIR="$PROJECT_DIR/installer"
 
-# Copy App yang baru dibuild ke folder pembungkus DMG
-cp -R "$APP_PATH" "$PROJECT_DIR/dmg_build/"
+# Bersihkan direktori build sementara
+rm -rf "$PKG_BUILD_DIR"
+mkdir -p "$PKG_STAGING/Applications"
 
-# Buat jalan pintas (alias icon) ke folder Applications sistem
-ln -s /Applications "$PROJECT_DIR/dmg_build/Applications"
+# Copy app ke staging area
+cp -R "$APP_PATH" "$PKG_STAGING/Applications/"
 
-# Hapus Installer DMG lama (jika ada) supaya aman nimpa
-rm -f "$HOME/Downloads/DonverterInstaller.dmg"
+# Step 5a: Buat component package
+pkgbuild \
+  --root "$PKG_STAGING" \
+  --identifier "com.bryandanendra.Donverter" \
+  --version "1.0" \
+  --install-location "/" \
+  "$PKG_BUILD_DIR/Donverter.pkg"
 
-# Ciptakan DMG
-hdiutil create -volname "Donverter" -srcfolder "$PROJECT_DIR/dmg_build" -ov -format UDZO "$HOME/Downloads/DonverterInstaller.dmg"
+# Step 5b: Buat installer product dengan wizard UI
+rm -f "$PKG_OUTPUT"
+productbuild \
+  --distribution "$INSTALLER_DIR/Distribution.xml" \
+  --resources "$INSTALLER_DIR/resources" \
+  --package-path "$PKG_BUILD_DIR" \
+  "$PKG_OUTPUT"
 
 # Bersihkan sisa
-rm -rf "$PROJECT_DIR/dmg_build"
+rm -rf "$PKG_BUILD_DIR"
 
 echo ""
-echo "✅ SELESAI! Installer tersedia di: ~/Downloads/DonverterInstaller.dmg"
+echo "✅ SELESAI! Installer tersedia di: ~/Downloads/DonverterInstaller.pkg"
 echo ""
 echo "📋 CATATAN UNTUK DISTRIBUSI:"
 echo "   - App sudah di-sign secara ad-hoc (gratis, tanpa Apple Developer Account)"
+echo "   - Installer menggunakan wizard macOS standar (Introduction → Readme → License → Install → Done)"
 echo "   - Teman kamu mungkin perlu klik 'Open Anyway' di System Settings > Privacy & Security"
 echo "   - Ini hanya perlu dilakukan SEKALI saja"
 echo "   - Kalau mau tanpa popup sama sekali, perlu Apple Developer Account (\$99/tahun)"

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+
+    <title>Donverter</title>
+    <background file="background.png" alignment="bottomleft" scaling="none"/>
+    <welcome    file="welcome.html"  mime-type="text/html"/>
+    <readme     file="readme.html"   mime-type="text/html"/>
+    <license    file="license.html"  mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+
+    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+
+    <domains enable_localSystem="true" enable_currentUserHome="false"/>
+
+    <choices-outline>
+        <line choice="com.bryandanendra.Donverter"/>
+    </choices-outline>
+
+    <choice id="com.bryandanendra.Donverter"
+            title="Donverter"
+            description="Aplikasi utama Donverter."
+            start_selected="true"
+            start_enabled="true"
+            start_visible="true">
+        <pkg-ref id="com.bryandanendra.Donverter"/>
+    </choice>
+
+    <pkg-ref id="com.bryandanendra.Donverter"
+             version="1.0"
+             onConclusion="none">Donverter.pkg</pkg-ref>
+
+</installer-gui-script>
